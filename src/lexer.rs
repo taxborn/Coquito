@@ -33,7 +33,10 @@ impl<'src> Lexer<'src> {
             let token = match chr {
                 '+' => Some(Token::Plus),
                 '-' => Some(Token::Minus),
-                '0'..='9' => return self.lex_number(),
+                chr if chr.is_digit(10) => return self.lex_number(),
+                chr if chr.is_whitespace() => {
+                    return self.lex_whitespace();
+                }
                 _ => None,
             };
 
@@ -47,7 +50,7 @@ impl<'src> Lexer<'src> {
         None
     }
 
-    pub fn lex_number(&mut self) -> Option<Token> {
+    fn lex_number(&mut self) -> Option<Token> {
         let mut chrs = vec![];
 
         while let Some((_, chr)) = self.chars.peek() {
@@ -67,6 +70,18 @@ impl<'src> Lexer<'src> {
         self.position += chrs.len();
 
         return Some(Token::Number(chrs.join("").parse::<usize>().unwrap()));
+    }
+
+    fn lex_whitespace(&mut self) -> Option<Token> {
+        while let Some((_, chr)) = self.chars.peek() {
+            if chr.is_whitespace() {
+                self.chars.next();
+            }
+
+            break;
+        }
+
+        self.next_token()
     }
 }
 
@@ -95,6 +110,22 @@ mod tests {
     #[test]
     fn test_numeric_inputs() {
         let input = "10+20-30";
+        let tokens: Vec<Token> = Lexer::new(&input).collect();
+
+        let expected = vec![
+            Token::Number(10),
+            Token::Plus,
+            Token::Number(20),
+            Token::Minus,
+            Token::Number(30),
+        ];
+
+        assert_eq!(tokens, expected);
+    }
+
+    #[test]
+    fn test_ignores_whitespace() {
+        let input = "10+  20 -30";
         let tokens: Vec<Token> = Lexer::new(&input).collect();
 
         let expected = vec![
